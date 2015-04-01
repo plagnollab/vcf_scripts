@@ -1,0 +1,25 @@
+#! /bin/env bash
+
+function error() { >&2 echo -e "\033[31m$*\033[0m"; }
+function stop() { error "$*"; exit 1; }
+try() { "$@" || stop "cannot $*"; }
+
+file=$1
+#doesn't work for double extension .gvcf.gz
+ext="${file##*.}"
+search=
+
+function usage {
+echo "usage: $0 <file>"
+}
+
+if [[ "$ext" == "gz" ]]
+then
+    search=zgrep
+else
+    search=grep
+fi
+
+$search -c -v ^# $file
+
+

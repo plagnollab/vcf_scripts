@@ -1,0 +1,28 @@
+#! /bin/env bash
+
+function error() { >&2 echo -e "\033[31m$*\033[0m"; }
+function stop() { error "$*"; exit 1; }
+try() { "$@" || stop "cannot $*"; }
+
+file=$1
+#doesn't work for double extension .gvcf.gz
+ext="${file##*.}"
+search=
+
+function usage {
+echo "usage: $0 <file>"
+}
+
+if [[ "$ext" == "gvcf" || "$ext" == "vcf" ]]
+then
+    search=grep
+elif [[ "$ext" == "gz" ]]
+then
+    search=zgrep
+else
+    usage
+    stop "unrecognised extension $ext"
+fi
+   
+
+$search -m1 '^#CHROM' $file | tr '\t' '\n' | grep -v -F -f <(echo '#CHROM,POS,ID,REF,ALT,QUAL,FILTER,INFO,FORMAT' | tr ',' '\n')
