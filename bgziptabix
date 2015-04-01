@@ -1,0 +1,19 @@
+#!/bin/bash
+ 
+f=$1
+extension=${f##*.}
+ 
+if [[ "$extension" == 'vcf' ]]
+then
+    in=$f
+    out=${in}.gz
+    bgzip -f -c $in > $out
+    tabix -f -p vcf $out
+elif [[ "$extension" == 'gz' ]]
+then
+    out=$f
+    #read from standard input
+    bgzip -f -c $in > $out
+    tabix -f -p vcf $out
+fi
+
