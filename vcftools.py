@@ -10,11 +10,12 @@ STD_HEADERS=['CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT']
 #which we find out once we read the #CHROM line
 SAMPLE_HEADERS=[]
 
-
-parser=argparse.ArgumentParser(description='Arguments to multiallele_to_single_gvcf.py')
+parser=argparse.ArgumentParser(description='Arguments to vcftools.py: this script will be default skip variants which are missing in all samples.')
 parser.add_argument('--GQ',default=None,type=int)
 parser.add_argument('--DP',default=None,type=int)
-parser.add_argument('--freq',default=False,action='store_true')
+parser.add_argument('--vcf',default=False,action='store_true',help='VCF output with single allele variants')
+parser.add_argument('--freq',default=False,action='store_true',help='freq output')
+parser.add_argument('--pileup',default=False,action='store_true',help='pileup output')
 args=parser.parse_args()
 #args.GQ
 #args.DP
@@ -23,7 +24,7 @@ args=parser.parse_args()
 def print_line(s):
     print( *([s[h] for h in STD_HEADERS+SAMPLE_HEADERS]), sep='\t' )
 
-def print_frequency(s):
+def frequency(s):
     geno=[s[h].split(':')[0] for h in SAMPLE_HEADERS]
     total_count=len(geno)
     missing_count=geno.count('./.')
@@ -33,24 +34,43 @@ def print_frequency(s):
     N=total_count-missing_count
     if N==0: AF=0
     else: AF=float(2*hom_count+het_count)/(2*N)
+    return {'N':N, 'total_count':total_count, 'missing_count':missing_count, 'wt_count':wt_count, 'het_count':het_count, 'hom_count':hom_count, 'AF':AF }
+
+def print_frequency(s):
+    f=frequency(s)
+    N=f['N']
+    AF=f['AF']
+    hom_count=f['hom_count']
+    het_count=f['het_count']
+    wt_count=f['wt_count']
+    total_count=f['total_count']
+    missing_count=f['missing_count']
     VARIANT_ID='_'.join([s['CHROM'], s['POS'], s['REF'], s['ALT']])
     if N!=0: print(VARIANT_ID,total_count,missing_count,wt_count,het_count,hom_count,AF, sep=',' )
 
-if not args.freq: print('##fileformat=VCFv4.1')
-else: print('VARIANT_ID','total_count','missing_count','wt_count','het_count','hom_count','AF',sep=',')
+def print_pileup(s):
+    f=frequency(s)
+    N=f['N']
+    if N!=0: print(s['CHROM'], s['POS'], s['REF'], s['ALT'], sep=' ')
+
+if args.freq:
+    print('VARIANT_ID','total_count','missing_count','wt_count','het_count','hom_count','AF',sep=',')
+elif args.vcf: 
+    print('##fileformat=VCFv4.1')
+
 for line in sys.stdin:
     line=line.strip()
     #remove beginning
     #lines which start with '###'
     #are not tab separated
     if line.startswith('##'):
-        if not args.freq: print(line)
+        if args.vcf: print(line)
         continue
     #this is tab separated line
     s=line.split("\t")
     #header line yay!: #CHROM ...
     if line.startswith('#'):
-        if not args.freq: print(line)
+        if args.vcf: print(line)
         headers=s
         headers[0]=headers[0].strip('#')
         #the first 9 names in the header are standard (see above)
@@ -90,7 +110,8 @@ for line in sys.stdin:
     if len(alternative_alleles)<=1:
         s['FORMAT']='GT:AD:DP:GQ:PL'
         if args.freq: print_frequency(s)
-        else: print_line(s)
+        elif args.vcf: print_line(s)
+        elif args.pileup: print_pileup(s)
         continue
     #otherwise split over as many lines as there are alternative alleles
     #each genotype then takes a 1 if matches the alternative or a 0 otherwise
@@ -116,7 +137,8 @@ for line in sys.stdin:
             s1[h]=':'.join( [GT, AD, DP] )
             s1['FORMAT']='GT:AD:DP'
         if args.freq: print_frequency(s1)
-        else: print_line(s1)
+        elif args.vcf: print_line(s1)
+        elif args.pileup: print_pileup(s1)
 
 
 
