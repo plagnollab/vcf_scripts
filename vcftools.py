@@ -2,7 +2,15 @@
 #! /bin/env python
 from __future__ import print_function
 import sys
-import argparse
+import argparse 
+import os.path
+from mmap import mmap
+import time
+from multiprocessing import Process
+import subprocess
+import csv
+
+
 
 #these 9 column headers are standard to all VCF files
 STD_HEADERS=['CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT']
@@ -11,14 +19,17 @@ STD_HEADERS=['CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT']
 SAMPLE_HEADERS=[]
 
 parser=argparse.ArgumentParser(description='Arguments to vcftools.py: this script will be default skip variants which are missing in all samples.')
-parser.add_argument('--GQ',default=None,type=int)
-parser.add_argument('--DP',default=None,type=int)
-parser.add_argument('--vcf',default=False,action='store_true',help='VCF output with single allele variants')
-parser.add_argument('--freq',default=False,action='store_true',help='freq output')
-parser.add_argument('--pileup',default=False,action='store_true',help='pileup output')
+parser.add_argument('--GQ',default=None,type=int,help='')
+parser.add_argument('--DP',default=None,type=int,help='set variants with depth < threshold to NA')
+parser.add_argument('--samples',default=None,type=str,help='file containing samples')
+parser.add_argument('--vcf',default=False,action='store_true',help='VCF output with single allele variants, subsets if sample specified')
+parser.add_argument('--freq',default=False,action='store_true',help='freq output, subsets if sample is specified')
+parser.add_argument('--pileup',default=False,action='store_true',help='pileup output, only output variants')
 args=parser.parse_args()
 #args.GQ
 #args.DP
+
+if args.samples: SAMPLE_HEADERS=[l for l in csv.DictReader(file(args.samples,'r'))]
 
 
 def print_line(s):
@@ -76,7 +87,7 @@ for line in sys.stdin:
         #the first 9 names in the header are standard (see above)
         if (headers[0:len(STD_HEADERS)] != STD_HEADERS): raise 'hell'
         #everything else in the header is a sample name
-        SAMPLE_HEADERS=headers[len(STD_HEADERS):]
+        if not len(SAMPLE_HEADERS): SAMPLE_HEADERS=headers[len(STD_HEADERS):]
         continue
     #you can now access elements by their header name
     s=dict(zip(headers,s))
