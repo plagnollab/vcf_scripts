@@ -10,7 +10,7 @@ from multiprocessing import Process
 import subprocess
 import csv
 
-
+usage=""" """
 
 #these 9 column headers are standard to all VCF files
 STD_HEADERS=['CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT']
@@ -26,11 +26,12 @@ parser.add_argument('--vcf',default=False,action='store_true',help='VCF output w
 parser.add_argument('--freq',default=False,action='store_true',help='freq output, subsets if sample is specified')
 parser.add_argument('--pileup',default=False,action='store_true',help='pileup output, only output variants')
 args=parser.parse_args()
-#args.GQ
-#args.DP
+
+if not args.vcf and not args.freq and not args.pileup: 
+    print(help())
+    exit(1)
 
 if args.samples: SAMPLE_HEADERS=[l for l in csv.DictReader(file(args.samples,'r'))]
-
 
 def print_line(s):
     print( *([s[h] for h in STD_HEADERS+SAMPLE_HEADERS]), sep='\t' )
